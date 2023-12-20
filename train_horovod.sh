@@ -21,11 +21,11 @@ export LD_LIBRARY_PATH="-L/home/keshava/pytorch_horovod/lightweight-cuda-mpi-pro
 
 source /home/keshava/pytorch_horovod/hp-custom-horovod/bin/activate
 
-HOROVOD_WITH_PYTORCH=1 HOROVOD_WITH_MPI=1 HOROVOD_GPU_OPERATIONS=1 pip install horovod[pytorch]
+HOROVOD_WITH_PYTORCH=1 HOROVOD_WITH_MPI=1 HOROVOD_GPU_OPERATIONS=MPI pip install horovod[pytorch]
 
 mpirun --oversubscribe -np 4 \
     -bind-to none -map-by slot \
-    -x NCCL_DEBUG=INFO -x LD_LIBRARY_PATH -x PATH \
+    -x LD_LIBRARY_PATH -x PATH \
     -mca pml ob1 -mca btl ^openib \
     python3 train_resnet_horovod.py
 

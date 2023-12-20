@@ -6,6 +6,7 @@ from torchvision import transforms, models, datasets
 import argparse
 import horovod.torch as hvd
 import horovod
+import json
 import torch.multiprocessing as mp
 import torch.utils.data.distributed
 # from pathlib import Path
@@ -101,8 +102,13 @@ def main():
     plt.ylabel("loss")
     plt.xlabel("epoch")
     plt.savefig(args.loss_graph_path)
+    
     # plt.show()
 
 
 if __name__ == "__main__":
     main()
+    if hvd.local_rank() == 0:
+        f = open("profiling/test2.json", "a")
+        f.write(json.dumps(hvd.profiled))
+        f.close()

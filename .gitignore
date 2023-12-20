@@ -1,5 +1,3 @@
 data/
 horovod/
 hp/
-hp-custom-horovod/
-lightweight-cuda-mpi-profiler/
