@@ -39,7 +39,7 @@ def train(image_loader, model, device, optimizer, loss_fn, scheduler, n_epochs):
             epoch_compute_start = time.time()
             output = model(image)
             epoch_compute_end = time.time()
-            timing["epochs_compute"].append({epoch, epoch_compute_end-epoch_compute_start})
+            timing["epochs_compute"].append({"epoch": epoch, "duration": epoch_compute_end-epoch_compute_start})
             loss = loss_fn(output, label)
 
             loss.backward()
@@ -52,7 +52,7 @@ def train(image_loader, model, device, optimizer, loss_fn, scheduler, n_epochs):
 
         print("Loss: ", total_loss[-1])
         epoch_end = time.time()
-        timing["epochs"].append({epoch, epoch_end-epoch_start})
+        timing["epochs"].append({"epoch": epoch, "duration": epoch_end-epoch_start})
 
     return total_loss
 
@@ -133,10 +133,9 @@ if __name__ == "__main__":
     main()
     total_end = time.time()
     timing["total"] = total_end - total_start
-    if hvd.local_rank() == 0:
-        print(hvd.profiled)
-        print(timing)
-        f = open(args.json, "a")
-        f.write(json.dumps(hvd.profiled))
-        f.write(json.dumps(timing))
-        f.close()
+    print(hvd.profiled)
+    print(timing)
+    f = open(str(hvd.local_rank())+args.json, "a")
+    f.write(json.dumps(hvd.profiled))
+    f.write(json.dumps(timing))
+    f.close()

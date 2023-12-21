@@ -5,8 +5,8 @@
 #SBATCH --ntasks=1 
 #SBATCH --ntasks-per-core=4
 #SBATCH --account=def-queenspp
-#SBATCH --time=7:00:00
-#SBATCH -o 100epochs2.out
+#SBATCH --time=0:30:00
+#SBATCH -o 5epochs.out
 
 module load python/3.10
 module load openmpi
@@ -27,7 +27,7 @@ mpirun --oversubscribe -np 4 \
     -bind-to none -map-by slot \
     -x LD_LIBRARY_PATH -x PATH \
     -mca pml ob1 -mca btl ^openib \
-    python3 train_resnet_horovod.py --epochs 100 --json epochs1002.json
+    python3 train_resnet_horovod.py --epochs 5 --json epochs5.json -s mode5.pth -p loss5.png
 
 
 # srun --ntasks-per-core=4 horovodrun -np 4 --timeline-filename out.json python3 train_resnet_horovod.py
