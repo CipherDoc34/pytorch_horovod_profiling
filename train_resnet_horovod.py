@@ -9,9 +9,21 @@ import horovod
 import json
 import torch.multiprocessing as mp
 import torch.utils.data.distributed
+import time
 # from pathlib import Path
 # from tqdm import tqdm
 #  salloc --time=2:0:0 --mem=24G --nodes=1 --gpus=4 --account=def-queenspp
+
+global timing
+
+timing = dict(
+    epochs = [],
+    epochs_compute = [],
+    total = 0.0,
+    training = 0.0
+)
+
+
 
 def train(image_loader, model, device, optimizer, loss_fn, scheduler, n_epochs):
     model.train()
@@ -19,11 +31,15 @@ def train(image_loader, model, device, optimizer, loss_fn, scheduler, n_epochs):
     total_loss = []
 
     for epoch in range(1, n_epochs + 1):
+        epoch_start = time.time()
         print("epoch: ", epoch)
         step_loss = 0
         for image, label in image_loader:
             image, label = image.to(device), label.to(device)
+            epoch_compute_start = time.time()
             output = model(image)
+            epoch_compute_end = time.time()
+            timing["epochs_compute"].append({epoch, epoch_compute_end-epoch_compute_start})
             loss = loss_fn(output, label)
 
             loss.backward()
@@ -35,21 +51,24 @@ def train(image_loader, model, device, optimizer, loss_fn, scheduler, n_epochs):
         total_loss.append(step_loss/len(image_loader))
 
         print("Loss: ", total_loss[-1])
+        epoch_end = time.time()
+        timing["epochs"].append({epoch, epoch_end-epoch_start})
 
     return total_loss
 
 
+parser = argparse.ArgumentParser(description="Train a classifier on ImageNet.")
+parser.add_argument('-e', '--epochs', type=int, default=1, help="Number of epochs")
+parser.add_argument('-b', '--batch_size', type=int, default=1000, help="Size of the batch")
+parser.add_argument('-s', '--save_path', type=str, default="model_horovod.pth", help="Save path for the model")
+parser.add_argument('-p', '--loss_graph_path', type=str, default="model_loss_horovod.png", help="Loss graph save location")
+parser.add_argument('-cuda', "--c", type=str, default="Y", help="use cuda")
+parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4, help="learning rate")
+parser.add_argument('-j', '--json', type=str, default="ahh.json", help="json save")
+args = parser.parse_args()
+
 def main():
     hvd.init()
-
-    parser = argparse.ArgumentParser(description="Train a classifier on ImageNet.")
-    parser.add_argument('-e', '--epochs', type=int, default=3, help="Number of epochs")
-    parser.add_argument('-b', '--batch_size', type=int, default=1000, help="Size of the batch")
-    parser.add_argument('-s', '--save_path', type=str, default="model_horovod.pth", help="Save path for the model")
-    parser.add_argument('-p', '--loss_graph_path', type=str, default="model_loss_horovod.png", help="Loss graph save location")
-    parser.add_argument('-cuda', "--c", type=str, default="Y", help="use cuda")
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4, help="learning rate")
-    args = parser.parse_args()
 
     device = "cpu"
     if args.c == 'y' or args.c == 'Y' and torch.cuda.is_available():
@@ -94,7 +113,10 @@ def main():
                                          named_parameters=model.named_parameters(),
                                          op=hvd.Adasum)
 
+    training_start = time.time()
     total_loss = train(train_loader, model, device, optimizer, loss_fn, scheduler, args.epochs)
+    training_end = time.time()
+    timing["training"] = training_end - training_start
 
     torch.save(model.state_dict(), args.save_path)
 
@@ -107,8 +129,14 @@ def main():
 
 
 if __name__ == "__main__":
+    total_start = time.time()
     main()
+    total_end = time.time()
+    timing["total"] = total_end - total_start
     if hvd.local_rank() == 0:
-        f = open("profiling/test2.json", "a")
+        print(hvd.profiled)
+        print(timing)
+        f = open(args.json, "a")
         f.write(json.dumps(hvd.profiled))
+        f.write(json.dumps(timing))
         f.close()

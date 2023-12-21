@@ -5,8 +5,8 @@
 #SBATCH --ntasks=1 
 #SBATCH --ntasks-per-core=4
 #SBATCH --account=def-queenspp
-#SBATCH --time=0:40:00
-#SBATCH -o testing.out
+#SBATCH --time=7:00:00
+#SBATCH -o 100epochs2.out
 
 module load python/3.10
 module load openmpi
@@ -21,13 +21,14 @@ export LD_LIBRARY_PATH="-L/home/keshava/pytorch_horovod/lightweight-cuda-mpi-pro
 
 source /home/keshava/pytorch_horovod/hp-custom-horovod/bin/activate
 
-HOROVOD_WITH_PYTORCH=1 HOROVOD_WITH_MPI=1 HOROVOD_GPU_OPERATIONS=MPI pip install horovod[pytorch]
+# HOROVOD_WITH_PYTORCH=1 HOROVOD_WITH_MPI=1 HOROVOD_GPU_OPERATIONS=MPI pip install horovod[pytorch]
 
 mpirun --oversubscribe -np 4 \
     -bind-to none -map-by slot \
     -x LD_LIBRARY_PATH -x PATH \
     -mca pml ob1 -mca btl ^openib \
-    python3 train_resnet_horovod.py
+    python3 train_resnet_horovod.py --epochs 100 --json epochs1002.json
+
 
 # srun --ntasks-per-core=4 horovodrun -np 4 --timeline-filename out.json python3 train_resnet_horovod.py
 
